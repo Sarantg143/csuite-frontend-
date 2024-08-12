@@ -28,53 +28,69 @@ const Assessmentsstart = () => {
   const [finalScore, setFinalScore] = useState(0);
 
 
+ useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('https://csuite-production.up.railway.app/api/question/');
+        setQuestionData(response.data);
+        // Initialize timeLeft from localStorage if available
+        setTimeLeft(parseInt(localStorage.getItem("TimeLeft")) || 3600);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   useEffect(() => {
-    setTimeLeft(localStorage.getItem("TimeLeft"))
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(()=>{
-    if(timeLeft<=0){
-      localStorage.setItem("elacomplete", "true")
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      localStorage.setItem("elacomplete", "true");
       testcomplete();
     }
-  })
+  }, [timeLeft]);
 
   const handleBookmark = () => {
-    // setBookmarkedQuestions((prev) =>
-    //   prev.includes(currentQuestionIndex)
-    //     ? prev.filter((index) => index !== currentQuestionIndex)
-    //     : [...prev, currentQuestionIndex]
-    // );
     setBookmarkedQuestions({
       ...bookmarkedQuestions,
-      [`${currentSectionIndex}-${currentQuestionIndex}`]:bookmarkedQuestions[`${currentSectionIndex}-${currentQuestionIndex}`]==="true" ? 'false' : 'true',
+      [`${currentSectionIndex}-${currentQuestionIndex}`]: bookmarkedQuestions[`${currentSectionIndex}-${currentQuestionIndex}`] === "true" ? 'false' : 'true',
     });
   };
 
   const handleNavigation = (direction) => {
-    const currentSection = questionData.sections[currentSectionIndex];
-    const currentSectionQuestions = currentSection.questions.slice(0, 20);
+    if (questionData) {
+      const currentSection = questionData.sections[currentSectionIndex];
+      const currentSectionQuestions = currentSection.questions.slice(0, 20);
 
-    if (direction === 'next' && currentQuestionIndex < currentSectionQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else if (direction === 'previous' && currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      if (direction === 'next' && currentQuestionIndex < currentSectionQuestions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      } else if (direction === 'previous' && currentQuestionIndex > 0) {
+        setCurrentQuestionIndex(currentQuestionIndex - 1);
+      }
     }
   };
 
   const handleOptionChange = (event) => {
-    setSelectedOptions({
-      ...selectedOptions,
-      [`${currentSectionIndex}-${currentQuestionIndex}`]: event.target.value,
-    });
-    setScore({
-      ...score,
-      [`${currentSectionIndex}-${currentQuestionIndex}`]: currentQuestion.answer===event.target.value?1:0,
-    });
+    if (questionData) {
+      const currentSection = questionData.sections[currentSectionIndex];
+      const currentQuestion = currentSection.questions[currentQuestionIndex];
+
+      setSelectedOptions({
+        ...selectedOptions,
+        [`${currentSectionIndex}-${currentQuestionIndex}`]: event.target.value,
+      });
+      setScore({
+        ...score,
+        [`${currentSectionIndex}-${currentQuestionIndex}`]: currentQuestion.answer === event.target.value ? 1 : 0,
+      });
+    }
   };
 
   const handleSelectChange = (event) => {
@@ -84,14 +100,8 @@ const Assessmentsstart = () => {
     setCurrentQuestionIndex(0);
   };
 
-  // const handleFinishClick = () => {
-  //   setTimeout(() => {
-  //       navigate("/finish-assessment");
-  //   }, 2000);
-  // };
-
   const handleNextSection = () => {
-    if (currentSectionIndex < questionData.sections.length - 1) {
+    if (questionData && currentSectionIndex < questionData.sections.length - 1) {
       setCurrentSectionIndex(currentSectionIndex + 1);
       setCurrentQuestionIndex(0);
     }
@@ -101,10 +111,7 @@ const Assessmentsstart = () => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
-    var timercolor = {}
-    if(seconds<=30){
-      timercolor = {color:'red'}
-    }
+    const timercolor = seconds <= 30 ? { color: 'red' } : {};
     return (
       <div className="time-row">
         <div className="time-item">
@@ -127,20 +134,16 @@ const Assessmentsstart = () => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
-    var time = "0";
-    console.log(minutes)
-    if(hours>0){
-      time = hours.toString().padStart(2, '0')+" hours "+minutes.toString().padStart(2, '0')+" minutues "+remainingSeconds.toString().padStart(2, '0')+" seconds";
-    }
-    else if(minutes>0){
-      time = minutes.toString().padStart(2, '0')+" minutues "+remainingSeconds.toString().padStart(2, '0')+" seconds";
-    }
-    else{
-      time = remainingSeconds.toString().padStart(2, '0')+" seconds";
+    let time = "0";
+    if (hours > 0) {
+      time = `${hours.toString().padStart(2, '0')} hours ${minutes.toString().padStart(2, '0')} minutes ${remainingSeconds.toString().padStart(2, '0')} seconds`;
+    } else if (minutes > 0) {
+      time = `${minutes.toString().padStart(2, '0')} minutes ${remainingSeconds.toString().padStart(2, '0')} seconds`;
+    } else {
+      time = `${remainingSeconds.toString().padStart(2, '0')} seconds`;
     }
     return time;
   };
-
   const sections = questionData.sections;
   const currentSection = sections[currentSectionIndex];
   const currentSectionQuestions = currentSection.questions.slice(0, 20);
